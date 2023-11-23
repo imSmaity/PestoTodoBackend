@@ -3,9 +3,10 @@ const { PUBLIC_KEY } = require('../../config');
 
 const authorize = (req, res, next) => {
   const header = req.headers;
+
   const token = header.token;
   if (!token) {
-    logger.warn('No token provided');
+    console.warn('No token provided');
     return res.status(401).send({
       message: 'No token provided',
     });

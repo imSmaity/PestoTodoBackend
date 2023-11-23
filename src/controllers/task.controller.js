@@ -1,11 +1,12 @@
 const UserModel = require('../models/user.model');
 const TaskModel = require('../models/task.model');
+const mongoose = require('mongoose');
 
 const createTask = async (req, res) => {
   try {
     const { _id } = req.user;
     const { title, status, description } = req.body;
-    const user = await UserModel.findById(_id).select('-_id');
+    const user = await UserModel.findById(_id).select('_id');
 
     if (!user) {
       return res.status(404).send({
@@ -19,7 +20,7 @@ const createTask = async (req, res) => {
         message: 'Title is required',
         userMessage: 'Please provide a title for the task.',
       });
-    } else if (!status.trim()) {
+    } else if (!Number(status)) {
       return res.status(400).send({
         success: false,
         message: 'Status is required',
@@ -27,7 +28,7 @@ const createTask = async (req, res) => {
       });
     } else {
       const task = new TaskModel({
-        user: mongoose.Types.ObjectId(user._id),
+        user: new mongoose.Types.ObjectId(user._id),
         title,
         description: description || '',
         status,
@@ -36,7 +37,7 @@ const createTask = async (req, res) => {
       const tasks = await TaskModel.find({ user: user._id }).populate({
         path: 'user',
         model: UserModel,
-        select: '-_id -name',
+        select: 'name email',
       });
       return res.status(201).send({
         success: true,
@@ -73,14 +74,14 @@ const updateTask = async (req, res) => {
         message: 'Title is required',
         userMessage: 'Please provide a title for the task.',
       });
-    } else if (!status.trim()) {
+    } else if (!Number(status)) {
       return res.status(400).send({
         success: false,
         message: 'Status is required',
         userMessage: 'Please provide status.',
       });
     } else {
-      const task = await TaskModel.findById(task_id).select('-_id');
+      const task = await TaskModel.findById(task_id).select('_id');
       if (!task) {
         return res.status(404).send({
           success: false,
@@ -96,7 +97,7 @@ const updateTask = async (req, res) => {
         const tasks = await TaskModel.find({ user: user._id }).populate({
           path: 'user',
           model: UserModel,
-          select: '_id name',
+          select: 'name email',
         });
         return res.status(200).send({
           success: true,
@@ -119,8 +120,8 @@ const updateTask = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const { _id } = req.user;
-    const { task_id } = req.body;
-    const user = await UserModel.findById(_id).select('-_id');
+    const { task_id } = req.params;
+    const user = await UserModel.findById(_id).select('_id');
 
     if (!user) {
       return res.status(404).send({
@@ -129,7 +130,7 @@ const deleteTask = async (req, res) => {
         userMessage: 'The requested user was not found',
       });
     } else {
-      const task = await TaskModel.findById(task_id).select('-_id');
+      const task = await TaskModel.findById(task_id).select('_id');
       if (!task) {
         return res.status(404).send({
           success: false,
@@ -141,7 +142,7 @@ const deleteTask = async (req, res) => {
         const tasks = await TaskModel.find({ user: user._id }).populate({
           path: 'user',
           model: UserModel,
-          select: '_id name',
+          select: 'name email',
         });
         return res.status(200).send({
           success: true,
@@ -161,8 +162,64 @@ const deleteTask = async (req, res) => {
   }
 };
 
+const filterTasks = async (req, res) => {
+  try {
+    const { _id } = req.user;
+    const { status } = req.query;
+    const user = await UserModel.findById(_id).select('_id');
+
+    if (!user) {
+      return res.status(404).send({
+        success: false,
+        message: 'User not found',
+        userMessage: 'The requested user was not found',
+      });
+    } else {
+      if (Number(status) === 0) {
+        const tasks = await TaskModel.find({
+          user: user._id,
+        }).populate({
+          path: 'user',
+          model: UserModel,
+          select: 'name email',
+        });
+
+        return res.status(200).send({
+          success: true,
+          message: 'Tasks filtered successfully',
+          userMessage: 'Tasks has been filtered.',
+          tasks,
+        });
+      }
+      const tasks = await TaskModel.find({
+        user: user._id,
+        status,
+      }).populate({
+        path: 'user',
+        model: UserModel,
+        select: 'name email',
+      });
+
+      return res.status(200).send({
+        success: true,
+        message: 'Tasks filtered successfully',
+        userMessage: 'Tasks has been filtered.',
+        tasks,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send({
+      success: false,
+      message: 'Internal Server Error',
+      userMessage: 'An internal server error occurred.',
+    });
+  }
+};
+
 module.exports = {
   createTask,
   updateTask,
   deleteTask,
+  filterTasks,
 };

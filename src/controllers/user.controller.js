@@ -19,15 +19,17 @@ const userRegister = async (req, res) => {
       return;
     }
 
+    const userHashPassword = await hashPassword(password);
     const user = new UserModel({
       name,
       email,
-      password: await hashPassword(password),
+      password: userHashPassword,
     });
+
     const savedUser = await user.save();
-    const selectedUser = await UserModel.findById(savedUser._id)
-      .select('-_id -name -email')
-      .exec();
+    const selectedUser = await UserModel.findById(savedUser._id).select(
+      'name email',
+    );
 
     const payload = {
       _id: selectedUser._id,
@@ -56,24 +58,23 @@ const userRegister = async (req, res) => {
 const userLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const userExists = await UserModel.findOne({ email }).select(
-      '-_id -password',
-    );
+    const userExists = await UserModel.findOne({ email }).select('password');
 
-    if (!userExists || !verifyPassword(password, userExists.password)) {
+    if (!userExists || !(await verifyPassword(password, userExists.password))) {
       return res.status(404).send({
         success: false,
         message: 'User or password wrong',
         userMessage: 'Invalid email or password',
       });
     } else {
-      const user = await UserModel.findById(userExists._id)
-        .select('-_id -name -email')
-        .exec();
+      const user = await UserModel.findById(userExists._id).select(
+        'name email',
+      );
+
       const tasks = await TaskModel.find({ user: user._id }).populate({
         path: 'user',
         model: UserModel,
-        select: '-_id -name -email',
+        select: 'name email',
       });
 
       const payload = { _id: user._id, name: user.name, email: user.email };
@@ -88,7 +89,7 @@ const userLogin = async (req, res) => {
       });
     }
   } catch (error) {
-    console.loog(error);
+    console.log(error);
     return res.status(500).send({
       success: false,
       message: 'Internal Server Error',
@@ -100,22 +101,22 @@ const userLogin = async (req, res) => {
 const userSynchronize = async (req, res) => {
   try {
     const { _id } = req.user;
-    const user = await UserModel.findById(_id).select('-_id -name -email');
+    const user = await UserModel.findById(_id).select('name email');
 
     if (!user) {
       return res.status(404).send({
         success: false,
-        message: 'User or password wrong',
-        userMessage: 'Invalid email or password',
+        message: 'User not found',
+        userMessage: 'Invalid user',
       });
     } else {
       const tasks = await TaskModel.find({ user: user._id }).populate({
         path: 'user',
         model: UserModel,
-        select: '-_id -name -email',
+        select: '_id name email',
       });
-
       const payload = { _id: user._id, name: user.name, email: user.email };
+
       const token = authenticate(payload);
       return res.status(200).send({
         success: true,
@@ -127,7 +128,7 @@ const userSynchronize = async (req, res) => {
       });
     }
   } catch (error) {
-    console.loog(error);
+    console.log(error);
     return res.status(500).send({
       success: false,
       message: 'Internal Server Error',

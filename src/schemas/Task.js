@@ -5,7 +5,7 @@ const taskSchema = mongoose.Schema(
     title: {
       type: String,
       trim: true,
-      required: ['true', 'Title required'],
+      required: [true, 'Title required'],
     },
     description: {
       type: String,
@@ -14,9 +14,9 @@ const taskSchema = mongoose.Schema(
       default: '',
     },
     status: {
-      type: String,
+      type: Number,
       trim: true,
-      required: ['true', 'Status required'],
+      required: [true, 'Status required'],
     },
     user: {
       type: mongoose.Types.ObjectId,
